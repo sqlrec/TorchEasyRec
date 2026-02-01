@@ -31,6 +31,7 @@ from tzrec.datasets.utils import (
 from tzrec.features.feature import BaseFeature
 from tzrec.protos import data_pb2
 from tzrec.utils import dist_util
+from tzrec.utils.filesystem_util import url_to_fs
 from tzrec.utils.logging_util import logger
 
 
@@ -67,7 +68,8 @@ def _reader_iter(
                         break
                 row_groups = list(range(i, metadata.num_row_groups))
 
-            parquet_file = parquet.ParquetFile(input_file)
+            fs, _ = url_to_fs(input_file)
+            parquet_file = parquet.ParquetFile(input_file, filesystem=fs)
             for batch in parquet_file.iter_batches(
                 batch_size, row_groups=row_groups, columns=columns, use_threads=False
             ):
@@ -109,7 +111,8 @@ def _reader_iter(
 
 
 def _get_metadata(input_file: str) -> Tuple[str, parquet.FileMetaData]:
-    parquet_file = parquet.ParquetFile(input_file)
+    fs, _ = url_to_fs(input_file)
+    parquet_file = parquet.ParquetFile(input_file, filesystem=fs)
     metadata = parquet_file.metadata
     parquet_file.close()
     return input_file, metadata
@@ -198,7 +201,8 @@ class ParquetReader(BaseReader):
         if len(self._input_files) == 0:
             raise RuntimeError(f"No parquet files exist in {self._input_path}.")
 
-        parquet_file = parquet.ParquetFile(self._input_files[0])
+        fs, _ = url_to_fs(self._input_files[0])
+        parquet_file = parquet.ParquetFile(self._input_files[0], filesystem=fs)
         if self._selected_cols:
             fields = []
             self._ordered_cols = []

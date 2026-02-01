@@ -120,19 +120,7 @@ class BaseDataset(IterableDataset, metaclass=_dataset_meta_cls):
             else None
         )
 
-        self._data_parser = DataParser(
-            features=features,
-            labels=list(data_config.label_fields)
-            if self._mode != Mode.PREDICT
-            else None,
-            sample_weights=list(data_config.sample_weight_fields)
-            if self._mode != Mode.PREDICT
-            else None,
-            mode=self._mode,
-            fg_threads=data_config.fg_threads,
-            force_base_data_group=data_config.force_base_data_group,
-            sampler_type=self.sampler_type,
-        )
+        self._data_parser = self.create_data_parser()
 
         self._input_fields = None
         self._selected_input_names = set()
@@ -197,6 +185,34 @@ class BaseDataset(IterableDataset, metaclass=_dataset_meta_cls):
         self._sampler_inited = False
 
         self._reader = None
+
+    def __getstate__(self) -> Dict[str, Any]:
+        """Return state for pickling."""
+        state = self.__dict__.copy()
+        state['_data_parser'] = None
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """Restore state from pickled data."""
+        self.__dict__.update(state)
+        # Re-initialize _fg_op only if it was initialized before pickling
+        self._data_parser = self.create_data_parser()
+
+    def create_data_parser(self) -> DataParser:
+        """Create data parser."""
+        return DataParser(
+            features=self._features,
+            labels=list(self._data_config.label_fields)
+            if self._mode != Mode.PREDICT
+            else None,
+            sample_weights=list(self._data_config.sample_weight_fields)
+            if self._mode != Mode.PREDICT
+            else None,
+            mode=self._mode,
+            fg_threads=self._data_config.fg_threads,
+            force_base_data_group=self._data_config.force_base_data_group,
+            sampler_type=self.sampler_type,
+        )
 
     def launch_sampler_cluster(
         self,
@@ -750,6 +766,10 @@ def create_writer(
     return writer
 
 
+def identity_collate_fn(x):
+    return x
+
+
 def create_dataloader(
     data_config: data_pb2.DataConfig,
     features: List[BaseFeature],
@@ -835,7 +855,7 @@ def create_dataloader(
         dataset=dataset,
         batch_size=None,
         pin_memory=data_config.pin_memory if mode != Mode.PREDICT else False,
-        collate_fn=lambda x: x,
+        collate_fn=identity_collate_fn,
         **kwargs,
     )
     # For PyTorch versions 2.6 and above, we initialize the data iterator before

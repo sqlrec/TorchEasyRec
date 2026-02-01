@@ -52,6 +52,7 @@ import logging as _logging  # NOQA
 import torch as _torch  # NOQA
 import numpy as _np  # NOQA
 from tzrec.utils import load_class as _load_class  # NOQA
+import multiprocessing
 
 _log_level = _os.getenv("LOG_LEVEL")
 if _log_level:
@@ -70,6 +71,9 @@ if _numpy_manual_seed:
 _use_deterministic_algorithms = _os.getenv("USE_DETERMINISTIC_ALGORITHMS", "0") == "1"
 if _use_deterministic_algorithms:
     _torch.use_deterministic_algorithms(True)
+_use_spawn_multi_process = _os.getenv("USE_SPAWN_MULTI_PROCESS", "0") == "1"
+if _use_spawn_multi_process:
+    multiprocessing.set_start_method('spawn', force=True)
 
 _load_class.auto_import()
 

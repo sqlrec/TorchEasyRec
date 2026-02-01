@@ -466,6 +466,21 @@ class BaseFeature(object, metaclass=_meta_cls):
         if self.fg_mode == FgMode.FG_NORMAL:
             self.init_fg()
 
+    def __getstate__(self) -> Dict[str, Any]:
+        """Return state for pickling."""
+        state = self.__dict__.copy()
+        # Remove _fg_op which cannot be pickled
+        state['_fg_op_initialized'] = self._fg_op is not None
+        state['_fg_op'] = None
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """Restore state from pickled data."""
+        self.__dict__.update(state)
+        # Re-initialize _fg_op only if it was initialized before pickling
+        if state.get('_fg_op_initialized', False):
+            self.init_fg()
+
     @property
     def name(self) -> str:
         """Feature name."""

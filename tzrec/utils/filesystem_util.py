@@ -40,6 +40,8 @@ def url_to_fs(path):
     rpath = path
     if isinstance(path, str):
         protocol, rpath = fsspec.core.split_protocol(path)
+        if "/" in rpath:
+            rpath = rpath[rpath.index("/"):]
     if protocol is None:
         return None, rpath
     elif protocol in _CACHED_FSSPEC_FILESYSTEMS:
@@ -48,6 +50,18 @@ def url_to_fs(path):
         fs, _ = fsspec.core.url_to_fs(path)
         _CACHED_FSSPEC_FILESYSTEMS[protocol] = fs
         return fs, rpath
+
+
+def get_protocol_prefix(path):
+    options = fsspec.utils.infer_storage_options(path)
+    protocol = options.get("protocol", "")
+    host = options.get("host", "")
+    if protocol:
+        if host:
+            return f"{protocol}://{host}"
+        else:
+            return f"{protocol}://"
+    return ""
 
 
 def _patched_open(path, mode="r", *args, **kwargs):
@@ -93,7 +107,7 @@ def _patched_remove(path):
 def _patched_exists(path):
     fs, _ = url_to_fs(path)
     if fs is not None:
-        return fs.exists(path, check_dir=True)
+        return fs.exists(path)
     else:
         return _original_exists(path)
 
@@ -125,7 +139,16 @@ def _patched_rmtree(path, ignore_errors=False, *args, **kwargs):
 def _patched_glob(pattern, *args, **kwargs):
     fs, _ = url_to_fs(pattern)
     if fs is not None:
-        return fs.glob(pattern, *args, **kwargs)
+        path_prefix = get_protocol_prefix(pattern)
+        ret = []
+        for path in fs.glob(pattern, *args, **kwargs):
+            if isinstance(path, str):
+                if not path.startswith(path_prefix):
+                    path = path_prefix + path
+                ret.append(path)
+            else:
+                ret.append(path)
+        return ret
     else:
         return _original_glob(pattern, *args, **kwargs)
 
