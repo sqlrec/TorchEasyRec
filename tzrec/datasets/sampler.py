@@ -147,6 +147,7 @@ _meta_cls = get_register_class_meta(_SAMPLER_CLASS_MAP)
 
 
 SAMPLER_CFG_TYPES = Union[
+    sampler_pb2.PoolNegativeSampler,
     sampler_pb2.NegativeSampler,
     sampler_pb2.NegativeSamplerV2,
     sampler_pb2.HardNegativeSampler,

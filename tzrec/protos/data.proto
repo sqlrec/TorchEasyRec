@@ -160,5 +160,6 @@ message DataConfig {
         HardNegativeSampler hard_negative_sampler = 103;
         HardNegativeSamplerV2 hard_negative_sampler_v2 = 104;
         TDMSampler tdm_sampler = 105;
+        PoolNegativeSampler pool_negative_sampler = 106;
     }
 }

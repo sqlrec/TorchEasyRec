@@ -137,6 +137,7 @@ class BaseDataset(IterableDataset, metaclass=_dataset_meta_cls):
         if self._data_config.HasField("sampler") and self._mode != Mode.PREDICT:
             sampler_type = self._data_config.WhichOneof("sampler")
             sampler_config = getattr(self._data_config, sampler_type)
+
             if hasattr(sampler_config, "item_id_field") and sampler_config.HasField(
                 "item_id_field"
             ):
@@ -224,6 +225,9 @@ class BaseDataset(IterableDataset, metaclass=_dataset_meta_cls):
         if self._data_config.HasField("sampler") and self._mode != Mode.PREDICT:
             sampler_type = self._data_config.WhichOneof("sampler")
             sampler_config = getattr(self._data_config, sampler_type)
+
+            if sampler_type == "pool_negative_sampler" and self._sampler_seq_delim:
+                raise ValueError("PoolNegativeSampler requires scalar item IDs")
 
             # Rewrite bare attr_fields to flattened (`video_id` ->
             # `cand_seq__video_id`); deep-copy so data_config isn't mutated.

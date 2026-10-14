@@ -16,6 +16,39 @@ TorchEasyRec的DSSM支持运行时进行负采样，会以图存储的方式将�
 
 ## 配置说明
 
+### 训练物品池负采样
+
+`PoolNegativeSampler` 缓存原始物品特征，无需启动 GraphLearn 服务，也不需要独立物品表。`input_path` 指向现有的训练 Parquet 文件或通配符，支持逗号分隔。启动时仅流式预读到池中不同物品数超过 `batch_size`，正式训练仍完整读取原数据。
+
+```text
+data_config {
+    batch_size: 256
+    pool_negative_sampler {
+        input_path: "data/train/*.parquet"
+        num_sample: 256
+        num_eval_sample: 256
+        pool_size: 4096
+        item_id_field: "item_id"
+        attr_fields: "item_id"
+        attr_fields: "category"
+    }
+}
+model_config {
+    dssm {
+        ...
+        in_batch_negative: false
+    }
+}
+```
+
+`item_id_field` 须是标量 string/int32/int64，包含在 `attr_fields` 中；属性字段应覆盖物品塔输入。`pool_size` 须大于训练及评估的 batch size，训练数据中不同物品数也须超过 batch size。`num_sample` 是每批共享的负例数；`num_eval_sample=0`（默认）时评估沿用该数值。
+
+每批先排除当前所有正例 ID，再从池中等概率、有放回抽取负例，随后只用当前训练正例更新池。池按 ID 去重，已有 ID 更新属性但不改变顺序，新 ID 超容量时按 FIFO 淘汰。验证池仅从训练源预热且始终只读，不能将验证数据作为预热来源。
+
+每个 worker/rank 独立维护池和随机数状态，持久 worker 在 epoch 间保留池。池只覆盖训练中遇到的物品，不是全目录均匀采样；重启会重新预热，暂不保存采样状态用于精确断点恢复。
+
+### 图负采样
+
 ```
 data_config {
     ...

@@ -1,6 +1,17 @@
 syntax = "proto2";
 package tzrec.protos;
 
+// Local FIFO pool populated exclusively from training item features.
+message PoolNegativeSampler {
+    // Existing training parquet input, also used to prewarm evaluation pools.
+    required string input_path = 1;
+    required uint32 num_sample = 2;
+    required uint32 pool_size = 3;
+    repeated string attr_fields = 4;
+    required string item_id_field = 5;
+    optional uint32 num_eval_sample = 6 [default=0];
+}
+
 // Weighted Random Sampling ItemID not in Batch
 message NegativeSampler {
     // sample data path
